@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DCS Bot — Administration</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#f0f2f5;color:#1a1a2e;min-height:100vh}
+header{background:#128c7e;color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+header h1{font-size:1.2rem}
+.auth{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.auth input{padding:8px 12px;border:0;border-radius:8px;background:rgba(255,255,255,.2);color:#fff;width:200px}
+.auth input::placeholder{color:rgba(255,255,255,.7)}
+button{padding:9px 14px;border:0;border-radius:8px;cursor:pointer;font-size:.85rem;font-weight:600}
+.btn-primary{background:#25d366;color:#fff}
+main{max-width:1100px;margin:0 auto;padding:16px}
+.cards{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+.card{background:#fff;padding:16px 20px;border-radius:14px;box-shadow:0 2px 8px #0001;min-width:130px;text-align:center}
+.card .num{font-size:1.8rem;font-weight:700;color:#128c7e}
+.card .lbl{font-size:.8rem;color:#666;margin-top:4px}
+section{background:#fff;border-radius:14px;box-shadow:0 2px 8px #0001;margin-bottom:20px;overflow:hidden}
+.tabs{display:flex;border-bottom:2px solid #eee;padding:0 14px}
+.tab{padding:10px 16px;cursor:pointer;font-size:.85rem;border-bottom:2px solid transparent;margin-bottom:-2px}
+.tab.active{border-bottom-color:#128c7e;color:#128c7e;font-weight:600}
+.tab-content{display:none;padding:14px}
+.tab-content.active{display:block}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.72rem;font-weight:600}
+.badge.ok{background:#d4edda;color:#155724}
+.badge.warn{background:#fff3cd;color:#856404}
+.badge.err{background:#f8d7da;color:#721c24}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{background:#f8f9fa;padding:10px 12px;text-align:left;font-weight:600;border-bottom:2px solid #eee}
+td{padding:9px 12px;border-bottom:1px solid #f0f0f0;vertical-align:middle}
+tr:hover td{background:#fafafa}
+select{padding:5px 8px;border:1px solid #ddd;border-radius:6px;font-size:.8rem}
+.empty{text-align:center;padding:30px;color:#999}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;padding:14px}
+.service{border:1px solid #e1e5e8;padding:12px;border-radius:10px}
+.service b{font-size:.9rem}
+.service p{font-size:.8rem;color:#666;margin:4px 0}
+</style>
+</head>
+<body>
+<header>
+  <div><div style="font-size:.8rem;opacity:.8">Digital César Service</div><h1>🤖 Tableau de bord du Bot</h1></div>
+  <div class="auth">
+    <input id="token" placeholder="Entrez ADMIN_TOKEN" type="password">
+    <button class="btn-primary" onclick="load()">Actualiser</button>
+  </div>
+</header>
+<main>
+  <div class="cards" id="stats"></div>
+  <section>
+    <div class="tabs">
+      <div class="tab active" onclick="showTab('orders')">Commandes</div>
+      <div class="tab" onclick="showTab('quotes')">Devis</div>
+      <div class="tab" onclick="showTab('clients')">Clients</div>
+      <div class="tab" onclick="showTab('products')">Services</div>
+    </div>
+    <div id="tab-orders" class="tab-content active"></div>
+    <div id="tab-quotes" class="tab-content"></div>
+    <div id="tab-clients" class="tab-content"></div>
+    <div id="tab-products" class="tab-content"></div>
+  </section>
+</main>
+<script>
+const h=()=>({Authorization:'Bearer '+document.getElementById('token').value});
+async function api(u,method='GET',body=null){const opts={method,headers:{...h(),'Content-Type':'application/json'}};if(body)opts.body=JSON.stringify(body);const r=await fetch(u,opts);if(!r.ok)throw Error(await r.text());return r.json();}
+function fmt(n){return Number(n).toLocaleString('fr-FR');}
+function badge(txt,type='ok'){return `<span class="badge ${type}">${txt}</span>`;}
+function statusBadge(s){if(!s)return '';if(['Terminée','Livrée','Confirmé','Payé'].includes(s))return badge(s,'ok');if(['En attente','Nouveau'].includes(s))return badge(s,'warn');return badge(s,'err');}
+function showTab(name){document.querySelectorAll('.tab').forEach((t,i)=>{t.classList.toggle('active',['orders','quotes','clients','products'][i]===name)});document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));document.getElementById('tab-'+name).classList.add('active');}
+async function updateOrderStatus(id,field,val){try{await api('/api/orders/'+id,'PATCH',{[field]:val});load();}catch(e){alert(e.message);}}
+async function updateQuoteStatus(id,val){try{await api('/api/quotes/'+id,'PATCH',{status:val});load();}catch(e){alert(e.message);}}
+async function load(){try{
+const [s,orders,quotes,clients,prods]=await Promise.all([api('/api/stats'),api('/api/orders'),api('/api/quotes'),api('/api/clients'),api('/api/products')]);
+document.getElementById('stats').innerHTML=`
+<div class="card"><div class="num">${s.clients}</div><div class="lbl">Clients</div></div>
+<div class="card"><div class="num">${s.orders}</div><div class="lbl">Commandes</div></div>
+<div class="card"><div class="num" style="color:#e67e22">${s.pending}</div><div class="lbl">En cours</div></div>
+<div class="card"><div class="num" style="color:#e74c3c">${s.quotes}</div><div class="lbl">Devis nouveaux</div></div>
+<div class="card"><div class="num">${fmt(s.revenue)} F</div><div class="lbl">Revenus confirmés</div></div>`;
+document.getElementById('tab-orders').innerHTML=orders.length===0?'<p class="empty">Aucune commande</p>':`<table><thead><tr><th>Réf.</th><th>Service</th><th>Client</th><th>Montant</th><th>Statut</th><th>Paiement</th><th>Action</th></tr></thead><tbody>${orders.slice(0,50).map(o=>`<tr><td><b>CMD-${String(o.id).padStart(5,'0')}</b><br><small>${o.created_at?.slice(0,10)}</small></td><td>${o.product_name||''}</td><td>${o.client_name||'—'}<br><small>${o.client_phone||''}</small></td><td>${fmt(o.total)} F</td><td>${statusBadge(o.status)}</td><td>${statusBadge(o.payment_status)}</td><td><select onchange="updateOrderStatus(${o.id},'status',this.value)">${['En attente','En cours','Livrée','Terminée','Annulée'].map(s=>`<option${o.status===s?' selected':''}>${s}</option>`).join('')}</select> <select onchange="updateOrderStatus(${o.id},'payment_status',this.value)">${['En attente','Confirmé','Payé','Remboursé'].map(s=>`<option${o.payment_status===s?' selected':''}>${s}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table>`;
+document.getElementById('tab-quotes').innerHTML=quotes.length===0?'<p class="empty">Aucune demande de devis</p>':`<table><thead><tr><th>ID</th><th>Téléphone</th><th>Demande</th><th>Date</th><th>Statut</th><th>Action</th></tr></thead><tbody>${quotes.map(q=>`<tr><td>#${q.id}</td><td>${q.phone}</td><td style="max-width:300px">${q.request}</td><td>${q.created_at?.slice(0,10)}</td><td>${statusBadge(q.status)}</td><td><select onchange="updateQuoteStatus(${q.id},this.value)">${['Nouveau','En cours','Envoyé','Terminé'].map(s=>`<option${q.status===s?' selected':''}>${s}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table>`;
+document.getElementById('tab-clients').innerHTML=clients.length===0?'<p class="empty">Aucun client</p>':`<table><thead><tr><th>ID</th><th>Nom</th><th>Téléphone</th><th>Date</th></tr></thead><tbody>${clients.slice(0,100).map(c=>`<tr><td>${c.id}</td><td>${c.name||'—'}</td><td>${c.phone}</td><td>${c.created_at?.slice(0,10)}</td></tr>`).join('')}</tbody></table>`;
+document.getElementById('tab-products').innerHTML=`<div class="grid">${prods.map(p=>`<div class="service"><b>${p.id} — ${p.name}</b><p>${p.description}</p><p>Prix : <b>${fmt(p.price)} F</b>${p.promo_price?` → Promo : <b style="color:#e74c3c">${fmt(p.promo_price)} F</b>`:''}</p>${statusBadge(p.status)}</div>`).join('')}</div>`;
+}catch(e){alert('Erreur : '+e.message+'\n\nVérifiez votre ADMIN_TOKEN.');}}
+load();
+</script>
+</body>
+</html>

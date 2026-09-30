@@ -1,0 +1,16 @@
+{
+  "name": "dcs-whatsapp-bot",
+  "version": "2.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "better-sqlite3": "^12.4.1",
+    "dotenv": "^17.2.2",
+    "openai": "^6.15.0",
+    "@supabase/supabase-js": "^2.57.4"
+  }
+}
